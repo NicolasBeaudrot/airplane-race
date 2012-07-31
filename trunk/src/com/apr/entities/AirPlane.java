@@ -19,6 +19,7 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Cylinder;
+import com.jme3.scene.shape.Sphere;
 import com.jme3.texture.Texture;
 
 /**
@@ -30,12 +31,11 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
     private AssetManager assetManager;
     private BulletAppState bulletAppState;
     private VehicleControl planeControl;
-    
     private final float accelerationForce = -400.0f;
     private final float brakeForce = 100.0f;
     private float steeringValue = 0;
     private float accelerationValue = 0;
-    
+
     /**
      * Constructor
      * 
@@ -47,7 +47,7 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
         this.bulletAppState = bulletAppState;
         //this.bulletAppState.getPhysicsSpace().addCollisionListener(this);
         this.setName("plane");
-        
+
         createPlane();
         makeEngine();
     }
@@ -64,12 +64,9 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
             } else {
                 accelerationValue -= accelerationForce;
             }
-            
-            planeControl.accelerate(accelerationValue);
-            Vector3f direction=new Vector3f(0,2,0);
-            planeControl.getPhysicsRotation().multLocal(direction);
-            planeControl.applyForce(direction, Vector3f.ZERO);
 
+            //planeControl.accelerate(accelerationValue);
+            //planeControl.applyForce(new Vector3f(-accelerationValue, 0, 0), Vector3f.ZERO);
         } else if (name.equals("moveB") && !keyPressed) {
             if (keyPressed) {
                 planeControl.brake(brakeForce);
@@ -90,13 +87,11 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
                 steeringValue += -.2f;
             }
             planeControl.steer(steeringValue);
+        } else if (name.equals("fire") && !keyPressed) {
+            makeCannonBall();
         }
     }
-    
-    public VehicleControl getPlaneControl() {
-        return this.planeControl;
-    }
-    
+
     private void createPlane() {
         Spatial plane = assetManager.loadModel("Models/Airplane/MiG-21bis.obj");
         plane.setName("plane");
@@ -104,13 +99,14 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
         Texture tex_ml = assetManager.loadTexture("Textures/Airplane/MiG-21bis.png");
         mat_stl.setTexture("ColorMap", tex_ml);
         plane.setMaterial(mat_stl);
-        
+
         CollisionShape shape = CollisionShapeFactory.createDynamicMeshShape(plane);
-        planeControl = new VehicleControl(shape, 400);
+        planeControl = new VehicleControl(shape, 50f);
+        planeControl.setKinematic(false);
+        
         this.addControl(planeControl);
         this.attachChild(plane);
-        
-        
+
         float stiffness = 60.0f;//200=f1 car
         float compValue = .3f; //(should be lower than damp)
         float dampValue = .4f;
@@ -119,10 +115,10 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
         planeControl.setSuspensionStiffness(stiffness);
         planeControl.setMaxSuspensionForce(10000.0f);
 
-        //Create four wheels and add them at their locations
+        //Create three wheels and add them at their locations
         Material mat = new Material(assetManager, "MatDefs/Misc/Unshaded.j3md");
         mat.setTransparent(true);
-        
+
         Vector3f wheelDirection = new Vector3f(0, -1, 0); // was 0, -1, 0
         Vector3f wheelAxle = new Vector3f(0, 0, -1); // was -1, 0, 0
         float radius = 0.3f;
@@ -161,8 +157,7 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
         this.attachChild(node1);
         this.attachChild(node2);
         this.attachChild(node3);
-        
-        
+
         bulletAppState.getPhysicsSpace().add(planeControl);
     }
 
@@ -194,24 +189,31 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
             System.out.println("Collision avec RigidBody");
         }
     }
-    
+
     public void update() {
-        
+        Vector3f direction = new Vector3f(0, 1, 0);
+        planeControl.getPhysicsRotation().multLocal(direction);
+        direction = direction.add(-accelerationValue, Math.abs(planeControl.getCurrentVehicleSpeedKmHour()), 0f);
+        planeControl.applyCentralForce(direction);
     }
     
-//    public void makeCannonBall() {
-//        /** Create a cannon ball geometry and attach to scene graph. */
-//        Geometry ball_geo = new Geometry("cannon ball", sphere);
-//        ball_geo.setMaterial(stone_mat);
-//        rootNode.attachChild(ball_geo);
-//        /** Position the cannon ball  */
-//        ball_geo.setLocalTranslation(cam.getLocation());
-//        /** Make the ball physcial with a mass > 0.0f */
-//        RigidBodyControl ball_phy = new RigidBodyControl(1f);
-//        /** Add physical ball to physics space. */
-//        ball_geo.addControl(ball_phy);
-//        bulletAppState.getPhysicsSpace().add(ball_phy);
-//        /** Accelerate the physcial ball to shoot it. */
-//        ball_phy.setLinearVelocity(cam.getDirection().mult(25));
-//    }
+    public void makeCannonBall() {
+        /** Create a cannon ball geometry and attach to scene graph. */
+        Sphere sphere = new Sphere(16, 16, 1f);
+        Material stone_mat = new Material(assetManager, "Textures/Terrain/Rock.png");
+        
+        Geometry ball_geo = new Geometry("cannon ball", sphere);
+        ball_geo.setMaterial(stone_mat);
+        this.attachChild(ball_geo);
+        /** Position the cannon ball  */
+        ball_geo.setLocalTranslation(this.getLocalTranslation());
+        /** Make the ball physcial with a mass > 0.0f */
+        RigidBodyControl ball_phy = new RigidBodyControl(1f);
+        /** Add physical ball to physics space. */
+        ball_geo.addControl(ball_phy);
+        bulletAppState.getPhysicsSpace().add(ball_phy);
+        /** Accelerate the physcial ball to shoot it. */
+        ball_phy.setLinearVelocity(this.planeControl.getLinearVelocity().mult(5));
+    }
+    
 }
