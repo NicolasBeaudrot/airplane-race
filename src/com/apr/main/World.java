@@ -89,6 +89,12 @@ public class World {
         RigidBodyControl floor_phy = new RigidBodyControl(0.0f);
         floor_geo.addControl(floor_phy);
         bulletAppState.getPhysicsSpace().add(floor_phy);
+        
+        Box ground = new Box(Vector3f.ZERO, 1000f, 0.1f, 500f);
+        Geometry ground_geo = new Geometry("Ground", ground);
+        RigidBodyControl ground_phy = new RigidBodyControl(0.0f);
+        ground_geo.addControl(ground_phy);
+        bulletAppState.getPhysicsSpace().add(ground_phy);
     }
     
     /**
