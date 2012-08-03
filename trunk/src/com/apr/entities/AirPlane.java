@@ -1,6 +1,7 @@
 package com.apr.entities;
 
 import com.jme3.asset.AssetManager;
+import com.jme3.asset.TextureKey;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.collision.PhysicsCollisionEvent;
 import com.jme3.bullet.collision.PhysicsCollisionListener;
@@ -11,31 +12,40 @@ import com.jme3.bullet.util.CollisionShapeFactory;
 import com.jme3.effect.ParticleEmitter;
 import com.jme3.effect.ParticleMesh;
 import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.AnalogListener;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
+import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.scene.shape.Sphere;
+import com.jme3.scene.shape.Sphere.TextureMode;
 import com.jme3.texture.Texture;
 
 /**
  *
  * @author n.beaudrot
  */
-public class AirPlane extends Node implements ActionListener, PhysicsCollisionListener {
+public class AirPlane extends Node implements ActionListener, AnalogListener, PhysicsCollisionListener {
 
     private AssetManager assetManager;
     private BulletAppState bulletAppState;
     private VehicleControl planeControl;
-    private final float accelerationForce = -400.0f;
-    private final float brakeForce = 100.0f;
-    private float steeringValue = 0;
+    private final float accelerationForce = -100.0f;
+    
     private float accelerationValue = 0;
-
+    private Material stone_mat;
+    private Sphere sphere;
+    
+    private boolean isFlying = false;
+    private Quaternion rotQuat1 = new Quaternion();
+    private float angle = 0;
+    private Vector3f axis = new Vector3f(0f, 0f, 1f);
+  
     /**
      * Constructor
      * 
@@ -45,51 +55,65 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
     public AirPlane(final AssetManager assetManager, final BulletAppState bulletAppState) {
         this.assetManager = assetManager;
         this.bulletAppState = bulletAppState;
-        //this.bulletAppState.getPhysicsSpace().addCollisionListener(this);
+        this.bulletAppState.getPhysicsSpace().addCollisionListener(this);
         this.setName("plane");
 
+        initMaterial();
         createPlane();
         makeEngine();
     }
 
     @Override
     public void onAction(String name, boolean keyPressed, float tpf) {
-        if (name.equals("jump") && !keyPressed) {
-
-            planeControl.setLinearVelocity(new Vector3f(0, 5, 0));
-
-        } else if (name.equals("moveF") && !keyPressed) {
-            if (keyPressed) {
-                accelerationValue += accelerationForce;
-            } else {
-                accelerationValue -= accelerationForce;
-            }
-
-            //planeControl.accelerate(accelerationValue);
-            //planeControl.applyForce(new Vector3f(-accelerationValue, 0, 0), Vector3f.ZERO);
-        } else if (name.equals("moveB") && !keyPressed) {
-            if (keyPressed) {
-                planeControl.brake(brakeForce);
-            } else {
-                planeControl.brake(0f);
-            }
-        } else if (name.equals("moveL") && !keyPressed) {
-            if (keyPressed) {
-                steeringValue += -.2f;
-            } else {
-                steeringValue += .2f;
-            }
-            planeControl.steer(steeringValue);
-        } else if (name.equals("moveR") && !keyPressed) {
-            if (keyPressed) {
-                steeringValue += .2f;
-            } else {
-                steeringValue += -.2f;
-            }
-            planeControl.steer(steeringValue);
-        } else if (name.equals("fire") && !keyPressed) {
-            makeCannonBall();
+        if (name.equals("fire") && !keyPressed) {
+            fireBullet();
         }
+    }
+   
+    @Override
+    public void onAnalog(String name, float value, float tpf) {
+        if (name.equals("moveF")) {
+                if (isFlying) {
+                    angle += 0.01f;
+                    axis.set(2, 1f);
+                    axis.set(0, 0f);
+                } else if (accelerationValue > -500) {
+                    accelerationValue -= accelerationForce;
+                }
+        } else if (name.equals("moveB")) {
+                if (isFlying) {
+                    angle -= 0.01f;
+                    axis.set(2, 1f);
+                    axis.set(0, 0f);
+                } else if (accelerationValue < 0) {
+                    accelerationValue += accelerationForce;
+                }
+        } else if (name.equals("moveL")) {
+            if (isFlying) {
+                angle += 0.01f;
+
+                axis.set(0, 1f);
+                axis.set(2, 0f);
+            }
+        } else if (name.equals("moveR")) {
+            if (isFlying) {
+                angle -= 0.01f;
+                
+                axis.set(0, 1f);
+                axis.set(2, 0f);
+            }
+        }
+    }
+    
+    private void initMaterial() {
+        stone_mat = new Material(assetManager, "MatDefs/Misc/Unshaded.j3md");
+        TextureKey key2 = new TextureKey("Textures/Terrain/Rock/Rock.png");
+        key2.setGenerateMips(true);
+        Texture tex2 = assetManager.loadTexture(key2);
+        stone_mat.setTexture("ColorMap", tex2);
+
+        sphere = new Sphere(32, 32, 0.4f, true, false);
+        sphere.setTextureMode(TextureMode.Projected);
     }
 
     private void createPlane() {
@@ -101,9 +125,9 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
         plane.setMaterial(mat_stl);
 
         CollisionShape shape = CollisionShapeFactory.createDynamicMeshShape(plane);
-        planeControl = new VehicleControl(shape, 50f);
+        planeControl = new VehicleControl(shape, 400f);
         planeControl.setKinematic(false);
-        
+
         this.addControl(planeControl);
         this.attachChild(plane);
 
@@ -162,7 +186,7 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
     }
 
     private void makeEngine() {
-        ParticleEmitter fire = new ParticleEmitter("Emitter", ParticleMesh.Type.Triangle, 30);
+        ParticleEmitter fire = new ParticleEmitter("Emitter", ParticleMesh.Type.Triangle, 40);
         Material mat_red = new Material(assetManager, "MatDefs/Misc/Particle.j3md");
         mat_red.setTexture("Texture", assetManager.loadTexture("Effects/Explosion/flame.png"));
         fire.setMaterial(mat_red);
@@ -191,29 +215,40 @@ public class AirPlane extends Node implements ActionListener, PhysicsCollisionLi
     }
 
     public void update() {
-        Vector3f direction = new Vector3f(0, 1, 0);
-        planeControl.getPhysicsRotation().multLocal(direction);
-        direction = direction.add(-accelerationValue, Math.abs(planeControl.getCurrentVehicleSpeedKmHour()), 0f);
-        planeControl.applyCentralForce(direction);
-    }
-    
-    public void makeCannonBall() {
-        /** Create a cannon ball geometry and attach to scene graph. */
-        Sphere sphere = new Sphere(16, 16, 1f);
-        Material stone_mat = new Material(assetManager, "Textures/Terrain/Rock.png");
+        isFlying = !(this.getLocalTranslation().getY() < 20);
         
+        if (!isFlying) {
+            if (!planeControl.isEnabled()) {
+                planeControl.setEnabled(true);
+            }
+            
+            Vector3f direction = new Vector3f(0, 1, 0);
+            direction = direction.add(-accelerationValue, accelerationValue, 0f);
+            planeControl.applyCentralForce(direction);
+            
+            //angle = this.getLocalRotation().toAngleAxis(axis);
+        } else {
+            System.out.println("Axis : " + axis);
+            
+            planeControl.setEnabled(false);
+            this.setLocalTranslation(this.getLocalTranslation().add(new Vector3f(-0.5f, 0, 0)));
+            rotQuat1.fromAngleAxis(angle, axis);
+            this.setLocalRotation(rotQuat1);
+        }
+    }
+
+    public void fireBullet() {
         Geometry ball_geo = new Geometry("cannon ball", sphere);
         ball_geo.setMaterial(stone_mat);
         this.attachChild(ball_geo);
         /** Position the cannon ball  */
-        ball_geo.setLocalTranslation(this.getLocalTranslation());
+        ball_geo.setLocalTranslation(new Vector3f(-9f, 1.2f, 0f));
         /** Make the ball physcial with a mass > 0.0f */
         RigidBodyControl ball_phy = new RigidBodyControl(1f);
         /** Add physical ball to physics space. */
         ball_geo.addControl(ball_phy);
         bulletAppState.getPhysicsSpace().add(ball_phy);
         /** Accelerate the physcial ball to shoot it. */
-        ball_phy.setLinearVelocity(this.planeControl.getLinearVelocity().mult(5));
+        ball_phy.setLinearVelocity(new Vector3f(-50f, 5f, 0));
     }
-    
 }
