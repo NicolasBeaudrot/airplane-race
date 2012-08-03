@@ -8,7 +8,9 @@ import com.jme3.input.ChaseCamera;
 import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.system.AppSettings;
+import com.jme3.ui.Picture;
 
 /**
  *
@@ -28,6 +30,7 @@ public class GameLoop extends SimpleApplication {
 
         this.setSettings(localSettings);
         this.setShowSettings(false);
+        this.setDisplayStatView(false);
         this.start();
     }
 
@@ -48,6 +51,14 @@ public class GameLoop extends SimpleApplication {
         World world = new World(assetManager, rootNode, bulletAppState, viewPort);
         world.createFloor();
         world.createSky();
+                
+        Picture radar_img = new Picture("Radar Picture");
+        radar_img.setImage(assetManager, "Interface/Radar.png", true);
+        radar_img.setWidth(100f);
+        radar_img.setHeight(100f);
+        radar_img.setPosition(settings.getWidth() - 100, settings.getHeight() - 100);
+        guiNode.attachChild(radar_img);
+
         //world.createWater();
 
         planeNode.setLocalTranslation(-200, 0, 0);
@@ -75,7 +86,7 @@ public class GameLoop extends SimpleApplication {
         inputManager.addMapping("moveR",
                 new KeyTrigger(KeyInput.KEY_D));
         inputManager.addListener(planeNode, "moveR");
-        inputManager.addMapping("fire", new KeyTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping("fire", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
         inputManager.addListener(planeNode, "fire");
     }
 
