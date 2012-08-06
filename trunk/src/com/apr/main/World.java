@@ -101,7 +101,7 @@ public class World {
      * Create a skybox
      */
     public void createSky() {
-        rootNode.attachChild(SkyFactory.createSky(assetManager, "Textures/Sky/skyboxsun5deg2.png", false));
+        rootNode.attachChild(SkyFactory.createSky(assetManager, "Textures/Sky/BrightSky.dds", false));
         
     }
     
