@@ -8,6 +8,7 @@ import com.jme3.input.ChaseCamera;
 import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.input.controls.MouseAxisTrigger;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.system.AppSettings;
 import com.jme3.ui.Picture;
@@ -60,34 +61,28 @@ public class GameLoop extends SimpleApplication {
         guiNode.attachChild(radar_img);
 
         //world.createWater();
-
-        planeNode.setLocalTranslation(-200, 0, 0);
     }
 
     @Override
     public void simpleUpdate(float tpf) {
-        planeNode.update();
+        planeNode.update(tpf);
     }
 
     protected void initListener() {
         //Plane Listener
-        inputManager.addMapping("jump",
-                new KeyTrigger(KeyInput.KEY_J));
-        inputManager.addListener(planeNode, "jump");
+        inputManager.addMapping("MouseLeft", new MouseAxisTrigger(MouseInput.AXIS_X, true));
+        inputManager.addMapping("MouseRight", new MouseAxisTrigger(MouseInput.AXIS_X, false));
+        inputManager.addMapping("MouseUp", new MouseAxisTrigger(MouseInput.AXIS_Y, true));
+        inputManager.addMapping("MouseDown", new MouseAxisTrigger(MouseInput.AXIS_Y, false));
+        
         inputManager.addMapping("moveF",
                 new KeyTrigger(KeyInput.KEY_Z));
-        inputManager.addListener(planeNode, "moveF");
         inputManager.addMapping("moveB",
                 new KeyTrigger(KeyInput.KEY_S));
-        inputManager.addListener(planeNode, "moveB");
-        inputManager.addMapping("moveL",
-                new KeyTrigger(KeyInput.KEY_Q));
-        inputManager.addListener(planeNode, "moveL");
-        inputManager.addMapping("moveR",
-                new KeyTrigger(KeyInput.KEY_D));
-        inputManager.addListener(planeNode, "moveR");
+        
         inputManager.addMapping("fire", new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
-        inputManager.addListener(planeNode, "fire");
+        
+        inputManager.addListener(planeNode, new String[]{"fire", "MouseLeft", "MouseRight", "MouseUp", "MouseDown", "moveF", "moveB"});
     }
 
     protected void initCrossHairs() {

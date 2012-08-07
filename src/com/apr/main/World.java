@@ -5,24 +5,17 @@ import com.jme3.asset.TextureKey;
 import com.jme3.bullet.BulletAppState;
 import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.material.Material;
-import com.jme3.math.ColorRGBA;
-import com.jme3.math.FastMath;
-import com.jme3.math.Plane;
-import com.jme3.math.Quaternion;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.ViewPort;
-import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
-import com.jme3.scene.shape.Quad;
 import com.jme3.scene.shape.Sphere;
 import com.jme3.scene.shape.Sphere.TextureMode;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture.WrapMode;
 import com.jme3.util.SkyFactory;
-import com.jme3.water.SimpleWaterProcessor;
 
 /**
  *
@@ -103,44 +96,5 @@ public class World {
     public void createSky() {
         rootNode.attachChild(SkyFactory.createSky(assetManager, "Textures/Sky/BrightSky.dds", false));
         
-    }
-    
-    /**
-     * Make water
-     */
-    public void createWater() {
-        SimpleWaterProcessor waterProcessor = new SimpleWaterProcessor(assetManager);
-        waterProcessor.setReflectionScene(rootNode);
-        waterProcessor.setDebug(false);
-        waterProcessor.setRefractionClippingOffset(1.0f);
-
-        //setting the water plane
-        Vector3f waterLocation=new Vector3f(0,-20,0);
-        waterProcessor.setPlane(new Plane(Vector3f.UNIT_Y, waterLocation.dot(Vector3f.UNIT_Y)));
-        
-        waterProcessor.setWaterColor(ColorRGBA.Brown);
-        waterProcessor.setDebug(true);
-        //lower render size for higher performance
-//        waterProcessor.setRenderSize(128,128);
-        //raise depth to see through water
-//        waterProcessor.setWaterDepth(20);
-        //lower the distortion scale if the waves appear too strong
-//        waterProcessor.setDistortionScale(0.1f);
-        //lower the speed of the waves if they are too fast
-//        waterProcessor.setWaveSpeed(0.01f);
-
-        Quad quad = new Quad(400,400);
-
-        //the texture coordinates define the general size of the waves
-        quad.scaleTextureCoordinates(new Vector2f(6f,6f));
-
-        Geometry water=new Geometry("water", quad);
-        water.setShadowMode(ShadowMode.Receive);
-        water.setLocalRotation(new Quaternion().fromAngleAxis(-FastMath.HALF_PI, Vector3f.UNIT_X));
-        water.setMaterial(waterProcessor.getMaterial());
-        //water.setLocalTranslation(-200, -20, 250);
-
-        rootNode.attachChild(water);
-        viewPort.addProcessor(waterProcessor);
     }
 }

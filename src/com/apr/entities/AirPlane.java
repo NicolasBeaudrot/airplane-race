@@ -42,10 +42,19 @@ public class AirPlane extends Node implements ActionListener, AnalogListener, Ph
     private Sphere sphere;
     
     private boolean isFlying = false;
-    private Quaternion rotQuat1 = new Quaternion();
-    private float angle = 0;
-    private Vector3f axis = new Vector3f(0f, 0f, 1f);
-  
+    private Vector3f lookAt = new Vector3f(0,0,1);
+    
+    private float xplus, yplus;
+    private Vector3f dirx;
+    private Vector3f diry;
+    private int life;
+    Vector3f dir;
+    Vector3f up;
+    float speed;
+    float angx;
+    float angy;
+    float angz;
+
     /**
      * Constructor
      * 
@@ -56,8 +65,15 @@ public class AirPlane extends Node implements ActionListener, AnalogListener, Ph
         this.assetManager = assetManager;
         this.bulletAppState = bulletAppState;
         this.bulletAppState.getPhysicsSpace().addCollisionListener(this);
-        this.setName("plane");
-
+        this.setName("AirplaneNode");
+        
+        this.dir = new Vector3f(-1.0F, 0.0F, 0.0F);
+        this.speed = 10f;
+        this.life = 100;
+        this.up = new Vector3f(0.0F, 1.0F, 0.0F);
+        this.dirx = new Vector3f();
+        this.diry = new Vector3f();
+    
         initMaterial();
         createPlane();
         makeEngine();
@@ -72,35 +88,34 @@ public class AirPlane extends Node implements ActionListener, AnalogListener, Ph
    
     @Override
     public void onAnalog(String name, float value, float tpf) {
-        if (name.equals("moveF")) {
-                if (isFlying) {
-                    angle += 0.01f;
-                    axis.set(2, 1f);
-                    axis.set(0, 0f);
-                } else if (accelerationValue > -500) {
-                    accelerationValue -= accelerationForce;
-                }
-        } else if (name.equals("moveB")) {
-                if (isFlying) {
-                    angle -= 0.01f;
-                    axis.set(2, 1f);
-                    axis.set(0, 0f);
-                } else if (accelerationValue < 0) {
-                    accelerationValue += accelerationForce;
-                }
-        } else if (name.equals("moveL")) {
-            if (isFlying) {
-                angle += 0.01f;
 
-                axis.set(0, 1f);
-                axis.set(2, 0f);
+        if (name.equals("moveF")) {
+            if (!isFlying && accelerationValue > -500) {
+                accelerationValue -= accelerationForce;
+            } else if (isFlying) {
+                speed += 2;
             }
-        } else if (name.equals("moveR")) {
+        } else if (name.equals("moveB")) {
+            if (!isFlying && accelerationValue < 0) {
+                accelerationValue += accelerationForce;
+            } else if (isFlying) {
+                speed -= 2;
+            }
+        } else if (name.equals("MouseLeft")) {
             if (isFlying) {
-                angle -= 0.01f;
-                
-                axis.set(0, 1f);
-                axis.set(2, 0f);
+                this.setLocalRotation(this.getLocalRotation().mult(new Quaternion().fromAngleAxis(-FastMath.QUARTER_PI * value * 2, Vector3f.UNIT_Y)));
+            }
+        } else if (name.equals("MouseRight")) {
+            if (isFlying) {    
+                this.setLocalRotation(this.getLocalRotation().mult(new Quaternion().fromAngleAxis(FastMath.QUARTER_PI * value * 2, Vector3f.UNIT_Y)));
+            }
+        } else if (name.equals("MouseUp")) {
+            if (isFlying) {                    
+                this.setLocalRotation(this.getLocalRotation().mult(new Quaternion().fromAngleAxis(-FastMath.QUARTER_PI * value * 2, Vector3f.UNIT_Z)));
+            }
+        } else if (name.equals("MouseDown")) {
+            if (isFlying) { 
+                this.setLocalRotation(this.getLocalRotation().mult(new Quaternion().fromAngleAxis(FastMath.QUARTER_PI * value * 2, Vector3f.UNIT_Z)));
             }
         }
     }
@@ -115,7 +130,7 @@ public class AirPlane extends Node implements ActionListener, AnalogListener, Ph
         sphere = new Sphere(32, 32, 0.4f, true, false);
         sphere.setTextureMode(TextureMode.Projected);
     }
-
+    
     private void createPlane() {
         Spatial plane = assetManager.loadModel("Models/Airplane/MiG-21bis.obj");
         plane.setName("plane");
@@ -150,31 +165,16 @@ public class AirPlane extends Node implements ActionListener, AnalogListener, Ph
         float yOff = 0.5f;
         float xOff = 0.6f;
         float zOff = 1.5f;
-
-        Cylinder wheelMesh = new Cylinder(16, 16, radius, radius * 0.6f, true);
-        Cylinder wheelMeshBack = new Cylinder(16, 16, 0.4f, 0.4f * 0.6f, true);
-
+        
         Node node1 = new Node("wheel 1 node");
-        Geometry wheels1 = new Geometry("wheel 1", wheelMesh);
-        node1.attachChild(wheels1);
-        wheels1.rotate(0, FastMath.HALF_PI, 0);
-        wheels1.setMaterial(mat);
         planeControl.addWheel(node1, new Vector3f(-4.2f, yOff, 0f),
                 wheelDirection, wheelAxle, restLength, radius, true);
 
         Node node2 = new Node("wheel 2 node");
-        Geometry wheels2 = new Geometry("wheel 2", wheelMeshBack);
-        node2.attachChild(wheels2);
-        wheels2.rotate(0, FastMath.HALF_PI, 0);
-        wheels2.setMaterial(mat);
         planeControl.addWheel(node2, new Vector3f(xOff, 0.7f, zOff),
                 wheelDirection, wheelAxle, restLength, 0.4f, false);
 
         Node node3 = new Node("wheel 3 node");
-        Geometry wheels3 = new Geometry("wheel 3", wheelMeshBack);
-        node3.attachChild(wheels3);
-        wheels3.rotate(0, FastMath.HALF_PI, 0);
-        wheels3.setMaterial(mat);
         planeControl.addWheel(node3, new Vector3f(xOff, 0.7f, -zOff),
                 wheelDirection, wheelAxle, restLength, 0.4f, false);
 
@@ -214,26 +214,26 @@ public class AirPlane extends Node implements ActionListener, AnalogListener, Ph
         }
     }
 
-    public void update() {
-        isFlying = !(this.getLocalTranslation().getY() < 20);
-        
+    public void update(float dt) {
         if (!isFlying) {
-            if (!planeControl.isEnabled()) {
-                planeControl.setEnabled(true);
-            }
+            
+            isFlying = !(this.getLocalTranslation().getY() < 20);
             
             Vector3f direction = new Vector3f(0, 1, 0);
             direction = direction.add(-accelerationValue, accelerationValue, 0f);
             planeControl.applyCentralForce(direction);
             
-            //angle = this.getLocalRotation().toAngleAxis(axis);
         } else {
-            System.out.println("Axis : " + axis);
+            if (planeControl.isEnabled()) {
+                planeControl.setEnabled(false);
+            }
             
-            planeControl.setEnabled(false);
-            this.setLocalTranslation(this.getLocalTranslation().add(new Vector3f(-0.5f, 0, 0)));
-            rotQuat1.fromAngleAxis(angle, axis);
-            this.setLocalRotation(rotQuat1);
+            this.movePlane(xplus, yplus, dt);
+            
+            Vector3f position = getLocalTranslation();
+            position.addLocal(this.dir.mult(dt * this.speed));
+
+            setLocalTranslation(position);
         }
     }
 
@@ -250,5 +250,23 @@ public class AirPlane extends Node implements ActionListener, AnalogListener, Ph
         bulletAppState.getPhysicsSpace().add(ball_phy);
         /** Accelerate the physcial ball to shoot it. */
         ball_phy.setLinearVelocity(new Vector3f(-50f, 5f, 0));
+    }
+    
+    public void movePlane(float xplus, float yplus, float dt) {
+        this.dirx = getRight();
+        this.dirx = this.dirx.mult(xplus);
+        this.diry = this.up.normalize();
+        this.diry = this.diry.mult(yplus);
+
+        this.dir.addLocal(this.dirx.mult(dt));
+        this.dir.addLocal(this.diry.mult(dt));
+        this.dir.normalizeLocal();
+
+        this.angz = (xplus / 2.0F);
+        this.angx = (-yplus / 13.0F);
+    }
+
+    public Vector3f getRight() {
+        return this.dir.cross(new Vector3f(0.0F, 1.0F, 0.0F)).normalize();
     }
 }
